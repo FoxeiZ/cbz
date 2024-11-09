@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import base64
 
 from typing import Union
@@ -53,7 +54,10 @@ class PageInfo(PageModel):
         self.suffix = mimetypes.guess_extension(filetype) or ".bin"
         assert self.suffix in IMAGE_FORMAT, f"Unsupported image format: {self.suffix}"
 
-        width, height = imagesize.get(value)
+        with io.BytesIO(value) as file_io:
+            file_io.seek(0)
+            width, height = imagesize.get(file_io)
+
         if not isinstance(width, int) or not isinstance(height, int):
             width, height = 0, 0
 
