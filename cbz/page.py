@@ -53,12 +53,6 @@ class PageInfo(PageModel):
         self.suffix = mimetypes.guess_extension(filetype) or ".bin"
         assert self.suffix in IMAGE_FORMAT, f"Unsupported image format: {self.suffix}"
 
-        if self.suffix == ".bin":
-            self.image_size = len(value)
-            self.image_width = 0
-            self.image_height = 0
-            return
-
         width, height = imagesize.get(value)
         if not isinstance(width, int) or not isinstance(height, int):
             width, height = 0, 0
