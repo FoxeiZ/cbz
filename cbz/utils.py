@@ -1,12 +1,9 @@
 from enum import Enum
-from io import BytesIO
 
-from PIL import Image
-from PIL.IcoImagePlugin import IcoFile
-from pathlib import Path
+from typing import Any
 
 
-def default_attr(value: any) -> any:
+def default_attr(value: Any) -> Any:
     """
     Provides a default value based on the expected type of an attribute.
 
@@ -23,18 +20,18 @@ def default_attr(value: any) -> any:
     """
     if issubclass(value, Enum):
         keys = [i.name for i in list(value)]
-        return value['UNKNOWN' if 'UNKNOWN' in keys else 'STORY']
+        return value["UNKNOWN" if "UNKNOWN" in keys else "STORY"]
     elif value in (int, float):
         return -1
-    elif value == bool:
+    elif isinstance(value, bool):
         return False
-    elif value == str:
-        return ''
+    elif isinstance(value, str):
+        return ""
     else:
         return value()
 
 
-def verify_attr(expected_type: any, key: str, value: any) -> None:
+def verify_attr(expected_type: Any, key: str, value: Any) -> None:
     """
     Verifies if the provided value matches the expected type.
 
@@ -47,10 +44,12 @@ def verify_attr(expected_type: any, key: str, value: any) -> None:
         TypeError: If the provided value does not match the expected type.
     """
     if not isinstance(value, expected_type):
-        raise TypeError(f'Expected type {expected_type} for attribute "{key}", but got {type(value)}')
+        raise TypeError(
+            f'Expected type {expected_type} for attribute "{key}", but got {type(value)}'
+        )
 
 
-def repr_attr(value: any) -> any:
+def repr_attr(value: Any) -> Any:
     """
     Provides a representation of the attribute's value.
 
@@ -68,6 +67,7 @@ def repr_attr(value: any) -> any:
 
 
 def readable_size(size: int, decimal: int = 2) -> str:
+    calc_size: float = size
     """
     Converts a file size in bytes to a human-readable string format.
 
@@ -78,32 +78,9 @@ def readable_size(size: int, decimal: int = 2) -> str:
     Returns:
         str: Human-readable string representation of the size.
     """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if size < 1024:
-            return f'{size:.{decimal}f} {unit}'
-        size /= 1024
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if calc_size < 1024:
+            return f"{calc_size:.{decimal}f} {unit}"
+        calc_size /= 1024
 
-
-def ico_to_png(path: Path) -> BytesIO:
-    """
-    Converts the largest icon in an ICO file to PNG format.
-
-    Args:
-       path (Path): Path to the ICO file.
-
-    Returns:
-       BytesIO: In-memory PNG file of the largest icon.
-    """
-    # Open the ICO file and read its content
-    image = Image.open(BytesIO(path.read_bytes()))
-    assert image.format == 'ICO', 'Unsupported image format'
-
-    # Get the ICO file object and find the largest icon size
-    icon: IcoFile = image.ico
-    max_size = max(icon.sizes(), key=lambda x: x[0] + x[1])
-    largest_image = icon.getimage(size=max_size)
-
-    # Save the largest icon as PNG format to an in-memory BytesIO object
-    content = BytesIO()
-    largest_image.save(content, format='PNG')
-    return content
+    return f"{size:.{decimal}f} B"

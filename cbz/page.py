@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import base64
 
-from io import BytesIO
 from typing import Union
 
 from pathlib import Path
-from PIL import Image
+
+import magic
+import mimetypes
+import imagesize
 
 from cbz.constants import IMAGE_FORMAT
 from cbz.models import PageModel
@@ -31,11 +33,11 @@ class PageInfo(PageModel):
     @property
     def content(self) -> bytes:
         """
-       Getter property for the content of the page.
+        Getter property for the content of the page.
 
-       Returns:
-           bytes: The content of the page.
-       """
+        Returns:
+            bytes: The content of the page.
+        """
         return self.__content
 
     @content.setter
@@ -46,11 +48,23 @@ class PageInfo(PageModel):
         Args:
             value (bytes): The content of the page in bytes.
         """
-        with Image.open(BytesIO(value)) as f:
-            self.suffix = f'.{f.format.lower()}'
-            assert self.suffix in IMAGE_FORMAT, f'Unsupported image format: {self.suffix}'
-            self.image_width = int(f.width)
-            self.image_height = int(f.height)
+
+        filetype = magic.from_buffer(value, mime=True)
+        self.suffix = mimetypes.guess_extension(filetype) or ".bin"
+        assert self.suffix in IMAGE_FORMAT, f"Unsupported image format: {self.suffix}"
+
+        if self.suffix == ".bin":
+            self.image_size = len(value)
+            self.image_width = 0
+            self.image_height = 0
+            return
+
+        width, height = imagesize.get(value)
+        if not isinstance(width, int) or not isinstance(height, int):
+            width, height = 0, 0
+
+        self.image_width = width
+        self.image_height = height
         self.image_size = len(value)
         self.__content = value
 
@@ -72,7 +86,7 @@ class PageInfo(PageModel):
         if isinstance(data, str):
             data = base64.b64decode(data)
         if not isinstance(data, bytes):
-            raise ValueError(f'Expecting Bytes or Base64 input, got {data!r}')
+            raise ValueError(f"Expecting Bytes or Base64 input, got {data!r}")
         return cls(data, **kwargs)
 
     @classmethod
@@ -92,16 +106,9 @@ class PageInfo(PageModel):
             FileNotFoundError: If the specified file path does not exist.
         """
         if not isinstance(path, (Path, str)):
-            raise ValueError(f'Expecting Path object or path string, got {path!r}')
-        with Path(path).open(mode='rb') as f:
+            raise ValueError(f"Expecting Path object or path string, got {path!r}")
+        with Path(path).open(mode="rb") as f:
             return cls(f.read(), **kwargs)
-
-    def show(self) -> None:
-        """
-        Displays the page content using an image viewer.
-        """
-        with Image.open(BytesIO(self.content)) as f:
-            f.show()
 
     def save(self, path: Union[Path, str]) -> None:
         """
@@ -110,5 +117,5 @@ class PageInfo(PageModel):
         Args:
             path (Union[Path, str]): The path where the content should be saved.
         """
-        with Path(path).open(mode='wb') as f:
+        with Path(path).open(mode="wb") as f:
             f.write(self.content)
